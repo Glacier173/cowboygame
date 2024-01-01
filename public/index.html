@@ -40,10 +40,50 @@
   border: none;
   cursor: pointer;
 }
+#healthBars {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.healthBar {
+    background-color: #8B4513; /* Brown color for a western look */
+    border: 2px solid #A0522D;
+    border-radius: 5px;
+    width: 415px;
+    height: 30px; /* Added height */
+    overflow: hidden; /* Hide overflowing content */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.healthInner {
+    background-color: #CD853F; /* Lighter brown for contrast */
+    border-radius: 3px;
+    color: white;
+    padding: 5px;
+    font-family: 'Courier New', Courier, monospace; /* Retro font */
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5); /* Inner shadow for depth */
+    width: 100%; /* Full width initially */
+    height: 100%; /* Match parent height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: width 0.3s; /* Smooth transition for width change */
+}
+
+
+
 
 </style>
 </head>
 <body>
+  <button id="resetButton">Reset Game</button>
   <audio id="shootSound" src="shoot.mp3"></audio>
   <audio id="jumpSound" src="jump.mp3"></audio>
   <audio id="gruntSound" src="CowboyGrunt.mp3"></audio>
@@ -53,10 +93,19 @@
     <div class="modal-content">
       <h2>Game Controls</h2>
       <p>Player 1 Controls: W: jump A: left D: right, F to shoot</p>
-      <p>Player 2 Controls: I: jump J: left K: right, H to shoot</p>
+      <p>Player 2 Controls: I: jump J: left L: right, H to shoot</p>
       <button id="startButton">Start Game</button>
     </div>
   </div>
+  <div id="healthBars">
+    <div id="player1Health" class="healthBar">
+        <div class="healthInner" style="width:100%"><span id="player1HealthText">Player 1: 3 HP</span></div>
+    </div>
+    <div id="player2Health" class="healthBar">
+        <div class="healthInner" style="width:100%"><span id="player2HealthText">Player 2: 3 HP</span></div>
+    </div>
+</div>
+</div>
 <canvas id="gameCanvas"></canvas>
 <script>
   function readFileContents(file) {
@@ -132,13 +181,21 @@
     }
 
     draw() {
+    // Shadow or glow effect
+    ctx.shadowColor = this === player1 ? 'red' : 'blue';
+    ctx.shadowBlur = 10; // Adjust the blur effect
+
+    ctx.drawImage(this.sprite, this.x, this.y, this.size, this.size);
+
+    // Reset shadow or glow effect
+    ctx.shadowColor = 'transparent';
       ctx.fillStyle = this.color;
       ctx.drawImage(this.sprite, this.x, this.y, this.size, this.size);
-      ctx.font = "20px Arial";
-      ctx.fillText("HP: " + this.health, this.x, this.y - 10);
+      // ctx.font = "20px Arial";
+      // ctx.fillText("HP: " + this.health, this.x, this.y - 10);
 
       if (this.bullet) {
-  ctx.fillStyle = 'red'; // Or any other contrasting color
+  ctx.fillStyle = 'blue'; // Or any other contrasting color
   ctx.fillRect(this.bullet.x, this.bullet.y, 10, 10);
 }
 
@@ -199,15 +256,38 @@
   }
 }
 
-    hit() {
-      this.health -= 1;
-      this.recentlyHit = true;
-      setTimeout(() => { this.recentlyHit = false; }, 500);
-      if (this.health <= 0) {
-        alert(this.color + ' player has been defeated!');
-        window.location.reload();
-      }
-    }
+hit() {
+  this.health -= 1;
+
+  const healthPercent = (this.health / 3) * 100; // Calculate the new width percentage
+  const healthBarId = (this === player1) ? 'player1Health' : 'player2Health';
+  const healthBarTextId = (this === player1) ? 'player1HealthText' : 'player2HealthText';
+  const healthBar = document.getElementById(healthBarId).getElementsByClassName('healthInner')[0];
+  const healthText = document.getElementById(healthBarTextId);
+
+  // Update the width of the health bar
+  healthBar.style.width = healthPercent + '%';
+
+  // Update the text content based on the player
+  if (this === player1) {
+    healthText.textContent = "Player 1: " + this.health + " HP";
+  } else {
+    healthText.textContent = "Player 2: " + this.health + " HP";
+  }
+
+  // Handle recently hit and defeat
+  this.recentlyHit = true;
+  setTimeout(() => { this.recentlyHit = false; }, 500);
+
+  if (this.health <= 0) {
+    alert(this.color + ' player has been defeated!');
+    window.location.reload();
+  }
+}
+
+
+
+
     reset() {
     this.x = this.initialX;
     this.y = this.initialY;
@@ -223,6 +303,27 @@
 }
 
   }
+
+  function resetGame() {
+  // Remove existing event listeners
+  window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keyup', handleKeyUp);
+  // Reset players and other game states
+  player1.reset();
+  player2.reset();
+  healthPacks = []; // Clear any existing health packs
+
+  // Restart the game
+  gameStarted = true;
+  document.getElementById('resetButton').style.display = 'none'; // Hide reset button
+  requestAnimationFrame(gameLoop);
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
+}
+
+// Add Event Listener to Reset Button
+document.getElementById('resetButton').addEventListener('click', resetGame);
+
   const groundLevelOffset = 200;
 
   const player1 = new Player(0, canvas.height - groundLevelOffset, 'red', 'w', 's', 'a', 'd', 'f', 'player1Sprite.png');
@@ -300,17 +401,21 @@ function handleKeyUp(e) {
   window.addEventListener('keyup', handleKeyUp);
 
   window.onload = function() {
-  // Display the modal at the start
-  document.getElementById('startModal').style.display = 'block';
+  if (!gameStarted) {
+    document.getElementById('startModal').style.display = 'block';
+  }
 
-  // Start the game when the button is clicked
-  document.getElementById('startButton').onclick = function() {
+  // Modify the start button event listener
+document.getElementById('startButton').onclick = function() {
   document.getElementById('introSound').play();
   document.getElementById('startModal').style.display = 'none';
-  gameStarted = true; // Enable game controls
-  //gameLoop(); // Start the game loop
+  document.getElementById('resetButton').style.display = 'none'; // Hide reset button
+  gameStarted = true;
 };
 };
+// Add these at a global level, not inside a function
+window.addEventListener('keydown', handleKeyDown);
+window.addEventListener('keyup', handleKeyUp);
 
 
   class HealthPack {
@@ -360,15 +465,25 @@ function checkHealthPackCollision(player) {
         player.x + player.size > healthPack.x &&
         player.y < healthPack.y + healthPack.size &&
         player.y + player.size > healthPack.y) {
-      // Only increase health if it is less than 3
       if (player.health < 3) {
-        player.health += 1; 
+        player.health += 1;
+        updateHealthBar(player); // Call a function to update the health bar
         document.getElementById('healSound').play();
       }
       return false; // Remove this health pack
     }
     return true;
   });
+}
+
+function updateHealthBar(player) {
+  const healthPercent = (player.health / 3) * 100;
+  const healthBarId = (player === player1) ? 'player1Health' : 'player2Health';
+  const healthBar = document.getElementById(healthBarId).getElementsByClassName('healthInner')[0];
+
+  healthBar.style.width = healthPercent + '%';
+  const healthText = (player === player1) ? "Red: " : "Blue: ";
+  healthBar.textContent = healthText + player.health + " HP";
 }
 
 function gameLoop() {
