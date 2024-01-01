@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1v1 Cowboy Duel</title>
+<style>
+  canvas {
+    background-color: white;
+    display: block;
+    margin: auto;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 800;
+  canvas.height = 600;
+
+  const background = new Image();
+  background.src = '';
+  class Player {
+    constructor(x, y, color, upKey, downKey, leftKey, rightKey, shootKey, spriteSrc) {
+      this.x = x;
+      this.y = y;
+      this.size = 120;
+      this.sprite = new Image();
+      this.sprite.src = spriteSrc;
+      this.color = color;
+      this.speed = 3;
+      this.keys = {
+        up: upKey,
+        down: downKey,
+        left: leftKey,
+        right: rightKey,
+        shoot: shootKey
+      };
+      this.isMoving = {
+        up: false,
+        down: false,
+        left: false,
+        right: false
+      };
+      this.health = 3;
+      this.bullet = null;
+      this.recentlyHit = false;
+    }
+
+    draw() {
+      ctx.fillStyle = this.color;
+      ctx.drawImage(this.sprite, this.x, this.y, this.size, this.size);
+      ctx.font = "20px Arial";
+      ctx.fillText("HP: " + this.health, this.x, this.y - 10);
+
+      if (this.bullet) {
+        ctx.fillRect(this.bullet.x, this.bullet.y, 5, 5);
+      }
+
+      if (this.recentlyHit) {
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(this.sprite, this.x, this.y, this.size, this.size);
+        ctx.globalAlpha = 1.0;
+      }
+    }
+
+    update() {
+      if (this.isMoving.up) this.y -= this.speed;
+      if (this.isMoving.down) this.y += this.speed;
+      if (this.isMoving.left) this.x -= this.speed;
+      if (this.isMoving.right) this.x += this.speed;
+      this.x = Math.max(0, Math.min(this.x, canvas.width - this.size));
+      this.y = Math.max(0, Math.min(this.y, canvas.height - this.size));
+
+      if (this.bullet) {
+        this.bullet.x += this.bullet.speedX;
+        this.bullet.y += this.bullet.speedY;
+        if (this.bullet.x < 0 || this.bullet.x > canvas.width || this.bullet.y < 0 || this.bullet.y > canvas.height) {
+          this.bullet = null;
+        }
+      }
+    }
+
+    shoot() {
+      if (!this.bullet) {
+        this.bullet = {
+          x: this.x + this.size / 2,
+          y: this.y + this.size / 2,
+          speedX: 5 * (this === player1 ? 1 : -1),
+          speedY: 0
+        };
+      }
+    }
+
+    hit() {
+      this.health -= 1;
+      this.recentlyHit = true;
+      setTimeout(() => { this.recentlyHit = false; }, 500);
+      if (this.health <= 0) {
+        alert(this.color + ' player has been defeated!');
+        window.location.reload();
+      }
+    }
+  }
+
+  const player1 = new Player(100, 100, 'red', 'w', 'a', 's', 'd', 'f', 'data:image/png;base64,')
+  const player2 = new Player(700, 500, 'blue', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'ArrowDown', '/', 'data:image/png;base64,')
+
+
+  function handleKeyDown(e) {
+    if (e.key === player1.keys.up) player1.isMoving.up = true;
+    if (e.key === player1.keys.down) player1.isMoving.down = true;
+    if (e.key === player1.keys.left) player1.isMoving.left = true;
+    if (e.key === player1.keys.right) player1.isMoving.right = true;
+    if (e.key === player1.keys.shoot) player1.shoot();
+
+    if (e.key === player2.keys.up) player2.isMoving.up = true;
+    if (e.key === player2.keys.down) player2.isMoving.down = true;
+    if (e.key === player2.keys.left) player2.isMoving.left = true;
+    if (e.key === player2.keys.right) player2.isMoving.right = true;
+    if (e.key === player2.keys.shoot) player2.shoot();
+  }
+
+  function handleKeyUp(e) {
+    if (e.key === player1.keys.up) player1.isMoving.up = false;
+    if (e.key === player1.keys.down) player1.isMoving.down = false;
+    if (e.key === player1.keys.left) player1.isMoving.left = false;
+    if (e.key === player1.keys.right) player1.isMoving.right = false;
+
+    if (e.key === player2.keys.up) player2.isMoving.up = false;
+    if (e.key === player2.keys.down) player2.isMoving.down = false;
+    if (e.key === player2.keys.left) player2.isMoving.left = false;
+    if (e.key === player2.keys.right) player2.isMoving.right = false;
+  }
+
+  function checkCollision() {
+    if (player1.bullet) {
+      if (player1.bullet.x >= player2.x && player1.bullet.x <= player2.x + player2.size &&
+          player1.bullet.y >= player2.y && player1.bullet.y <= player2.y + player2.size) {
+        player1.bullet = null;
+        player2.hit();
+      }
+    }
+
+    if (player2.bullet) {
+      if (player2.bullet.x >= player1.x && player2.bullet.x <= player1.x + player1.size &&
+          player2.bullet.y >= player1.y && player2.bullet.y <= player1.y + player1.size) {
+        player2.bullet = null;
+        player1.hit();
+      }
+    }
+  }
+
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
+
+  function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw the background
+    ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+
+    player1.update();
+    player1.draw();
+    player2.update();
+    player2.draw();
+    checkCollision();
+    requestAnimationFrame(gameLoop);
+  }
+
+  gameLoop();
+</script>
+</body>
+</html>

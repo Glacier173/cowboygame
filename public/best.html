@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1v1 Cowboy Duel</title>
+<style>
+  canvas {
+    background-color: white;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto; /* 15% from the top and centered */
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%; /* Could be more or less, depending on screen size */
+}
+
+/* The Start Game button */
+#startButton {
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+</style>
+</head>
+<body>
+  <audio id="shootSound" src="shoot.mp3"></audio>
+  <audio id="jumpSound" src="jump.mp3"></audio>
+  <audio id="gruntSound" src="CowboyGrunt.mp3"></audio>
+  <audio id="healSound" src="heal.mp3"></audio>
+  <audio id="introSound" src="introSound.mp3"></audio>
+  <div id="startModal" class="modal">
+    <div class="modal-content">
+      <h2>Game Controls</h2>
+      <p>Player 1 Controls: W: jump A: left D: right, F to shoot</p>
+      <p>Player 2 Controls: I: jump J: left K: right, H to shoot</p>
+      <button id="startButton">Start Game</button>
+    </div>
+  </div>
+<canvas id="gameCanvas"></canvas>
+<script>
+  function readFileContents(file) {
+      if (file) {
+          var reader = new FileReader();
+          reader.onload = function(e) {
+              var contents = e.target.result;
+              console.log(contents);  // Print the HTML file contents
+              // Additional code to manipulate or display the contents
+          };
+          reader.readAsText(file);
+      }
+  }
+
+  // Example usage: Call this function when a file is selected
+  // You can integrate this with your existing file input or other elements/events
+  
+</script>
+<script>
+  let gameStarted = false;
+  const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+        //canvas.width = 800;
+        //canvas.height = 600;
+
+        const background = new Image();
+        background.onload = function() {
+            gameLoop();
+        };
+        background.onerror = function() {
+            console.error("Error loading background image.");
+        };
+        background.src = 'backgroundSprite.png';
+  class Player {
+    constructor(x, y, color, upKey, downKey, leftKey, rightKey, shootKey, spriteSrc) {
+      this.x = x;
+      this.y = y;
+      this.initialX = x; // Store initial position
+      this.initialY = y; // Store initial position
+      this.size = 200;
+      this.sprite = new Image();
+      this.sprite.src = spriteSrc;
+      this.color = color;
+      this.speed = 3;
+      this.keys = {
+        up: upKey,
+        down: downKey,
+        left: leftKey,
+        right: rightKey,
+        shoot: shootKey
+      };
+      this.isMoving = {
+        up: false,
+        down: false,
+        left: false,
+        right: false
+      };
+      this.health = 3;
+      this.bullet = null;
+      this.recentlyHit = false;
+      this.isJumping = false;
+      this.velocityY = 0;
+      this.gravity = 0.5;
+      this.jumpPower = -14;
+
+    }
+
+    draw() {
+      ctx.fillStyle = this.color;
+      ctx.drawImage(this.sprite, this.x, this.y, this.size, this.size);
+      ctx.font = "20px Arial";
+      ctx.fillText("HP: " + this.health, this.x, this.y - 10);
+
+      if (this.bullet) {
+  ctx.fillStyle = 'red'; // Or any other contrasting color
+  ctx.fillRect(this.bullet.x, this.bullet.y, 10, 10);
+}
+
+      if (this.recentlyHit) {
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(this.sprite, this.x, this.y, this.size, this.size);
+        ctx.globalAlpha = 1.0;
+      }
+    }
+
+    update() {
+    // Horizontal movement
+    if (this.isMoving.left) this.x -= this.speed;
+    if (this.isMoving.right) this.x += this.speed;
+    this.x = Math.max(0, Math.min(this.x, canvas.width - this.size));
+
+    // Jumping and gravity
+    if (this.isJumping && this.y >= canvas.height - groundLevelOffset) {
+      this.velocityY = this.jumpPower;
+      this.isJumping = false;
+    }
+    this.y += this.velocityY;
+    this.velocityY += this.gravity;
+
+    // Ground collision
+    if (this.y > canvas.height - groundLevelOffset) {
+      this.y = canvas.height - groundLevelOffset;
+      this.velocityY = 0;
+    }
+
+      if (this.bullet) {
+        this.bullet.x += this.bullet.speedX;
+        this.bullet.y += this.bullet.speedY;
+        if (this.bullet.x < 0 || this.bullet.x > canvas.width || this.bullet.y < 0 || this.bullet.y > canvas.height) {
+          this.bullet = null;
+        }
+      }
+    }
+
+    shoot() {
+      if (!this.bullet) {
+        this.bullet = {
+          x: this.x + this.size / 2,
+          y: this.y + this.size / 3,
+          speedX: 5 * (this === player1 ? 1 : -1),
+          speedY: 0
+        };
+        document.getElementById('shootSound').volume = 0.1;
+        document.getElementById('shootSound').play();
+      }
+    }
+
+    jump() {
+  if (this.y >= canvas.height - groundLevelOffset && !this.isJumping) {
+    this.velocityY = this.jumpPower;
+    this.isJumping = true;
+    document.getElementById('jumpSound').play();
+  }
+}
+
+    hit() {
+      this.health -= 1;
+      this.recentlyHit = true;
+      setTimeout(() => { this.recentlyHit = false; }, 500);
+      if (this.health <= 0) {
+        alert(this.color + ' player has been defeated!');
+        window.location.reload();
+      }
+    }
+    reset() {
+    this.x = this.initialX;
+    this.y = this.initialY;
+    this.health = 3;
+    this.bullet = null;
+    this.recentlyHit = false;
+    this.isJumping = false;
+    this.velocityY = 0;
+    this.gravity = 0.5;
+    this.jumpPower = -14; // Reset jump power if it changes during the game
+    this.speed = 3; // Corrected typo here
+    this.isMoving = { up: false, down: false, left: false, right: false }; // Reset key states
+}
+
+  }
+  const groundLevelOffset = 200;
+
+  const player1 = new Player(0, canvas.height - groundLevelOffset, 'red', 'w', 's', 'a', 'd', 'f', 'player1Sprite.png');
+const player2 = new Player(canvas.width - 200, canvas.height - groundLevelOffset, 'blue', 'i', 'k', 'j', 'l', 'h', 'player2Sprite.png');
+
+function handleKeyDown(e) {
+  if (!gameStarted) return;
+    if (e.key === player1.keys.up) player1.isMoving.up = true;
+    if (e.key === player1.keys.down) player1.isMoving.down = true;
+    if (e.key === player1.keys.left) player1.isMoving.left = true;
+    if (e.key === player1.keys.right) player1.isMoving.right = true;
+    if (e.key === player1.keys.shoot) player1.shoot();
+
+    if (e.key === player2.keys.up) player2.isMoving.up = true;
+    if (e.key === player2.keys.down) player2.isMoving.down = true;
+    if (e.key === player2.keys.left) player2.isMoving.left = true;
+    if (e.key === player2.keys.right) player2.isMoving.right = true;
+    if (e.key === player2.keys.shoot) player2.shoot();
+     // Jumping
+  if (e.key === player1.keys.up && player1.y >= canvas.height - groundLevelOffset) player1.isJumping = true;
+  if (e.key === player2.keys.up && player2.y >= canvas.height - groundLevelOffset) player2.isJumping = true;
+  if (e.key === player1.keys.up) document.getElementById('jumpSound').play();
+  if (e.key === player2.keys.up) document.getElementById('jumpSound').play();
+}
+
+function handleKeyUp(e) {
+  if (!gameStarted) return;
+    if (e.key === player1.keys.up) player1.isMoving.up = false;
+    if (e.key === player1.keys.down) player1.isMoving.down = false;
+    if (e.key === player1.keys.left) player1.isMoving.left = false;
+    if (e.key === player1.keys.right) player1.isMoving.right = false;
+
+    if (e.key === player2.keys.up) player2.isMoving.up = false;
+    if (e.key === player2.keys.down) player2.isMoving.down = false;
+    if (e.key === player2.keys.left) player2.isMoving.left = false;
+    if (e.key === player2.keys.right) player2.isMoving.right = false;
+  }
+
+  function checkCollision() {
+  const bulletWidth = 10;
+  const bulletHeight = 10;
+  const hitRadius = 50; // Radius within which a hit is detected
+
+  function isBulletHitCenter(bullet, player) {
+    const playerCenterX = player.x + player.size / 2;
+    const playerCenterY = player.y + player.size / 2;
+    const bulletCenterX = bullet.x + bulletWidth / 2;
+    const bulletCenterY = bullet.y + bulletHeight / 2;
+
+    const distX = Math.abs(bulletCenterX - playerCenterX);
+    const distY = Math.abs(bulletCenterY - playerCenterY);
+
+    return distX <= hitRadius && distY <= hitRadius;
+  }
+
+  if (player1.bullet && isBulletHitCenter(player1.bullet, player2)) {
+    player1.bullet = null;
+    player2.hit();
+    document.getElementById('gruntSound').volume = 1.0;
+    document.getElementById('gruntSound').play();
+  }
+
+  if (player2.bullet && isBulletHitCenter(player2.bullet, player1)) {
+    player2.bullet = null;
+    player1.hit();
+    document.getElementById('gruntSound').volume = 1.0;
+    document.getElementById('gruntSound').play();
+  }
+}
+
+
+
+
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
+
+  window.onload = function() {
+  // Display the modal at the start
+  document.getElementById('startModal').style.display = 'block';
+
+  // Start the game when the button is clicked
+  document.getElementById('startButton').onclick = function() {
+  document.getElementById('introSound').play();
+  document.getElementById('startModal').style.display = 'none';
+  gameStarted = true; // Enable game controls
+  //gameLoop(); // Start the game loop
+};
+};
+
+
+  class HealthPack {
+  constructor(x) {
+    this.x = x;
+    this.y = 0; // Start from top
+    this.size = 65;
+    this.velocityY = 2; // Falling speed
+    this.sprite = new Image();
+    this.sprite.src = 'healthSprite.png'; // Path to your sprite image
+    this.sprite.onload = () => {
+      this.isSpriteLoaded = true;
+    };
+    this.isSpriteLoaded = false;
+  }
+
+  draw() {
+    if (this.isSpriteLoaded) {
+      // Draw the sprite image
+      ctx.drawImage(this.sprite, this.x, this.y, this.size, this.size);
+    }
+  }
+
+  update() {
+    // Allow the health pack to reach the bottom of the canvas
+    if (this.y + this.size < canvas.height) {
+      this.y += this.velocityY; // Update position
+    }
+  }
+}
+
+let healthPacks = [];
+
+function generateHealthPack() {
+  if (Math.random() < 0.1) { // 10% chance
+    const x = Math.random() * (canvas.width - 50);
+    healthPacks.push(new HealthPack(x)); // Create health pack at top
+  }
+}
+
+
+setInterval(generateHealthPack, 5000); // Check every 10 seconds
+
+function checkHealthPackCollision(player) {
+  healthPacks = healthPacks.filter(healthPack => {
+    if (player.x < healthPack.x + healthPack.size &&
+        player.x + player.size > healthPack.x &&
+        player.y < healthPack.y + healthPack.size &&
+        player.y + player.size > healthPack.y) {
+      // Only increase health if it is less than 3
+      if (player.health < 3) {
+        player.health += 1; 
+        document.getElementById('healSound').play();
+      }
+      return false; // Remove this health pack
+    }
+    return true;
+  });
+}
+
+function gameLoop() {
+  if (!gameStarted) {
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw the background
+    ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+
+    // Update and draw health packs
+  healthPacks.forEach(pack => {
+    pack.update();
+    pack.draw();
+  });
+
+  checkHealthPackCollision(player1);
+  checkHealthPackCollision(player2);
+
+    player1.update();
+    player1.draw();
+    player2.update();
+    player2.draw();
+    checkCollision();
+    requestAnimationFrame(gameLoop);
+  }
+  gameLoop();
+</script>
+</body>
+</html>
