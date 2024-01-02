@@ -107,8 +107,8 @@
 </div>
 </div>
 <canvas id="gameCanvas"></canvas>
-<script>
-  function readFileContents(file) {
+<!-- <script>
+  function (file) {
       if (file) {
           var reader = new FileReader();
           reader.onload = function(e) {
@@ -123,7 +123,7 @@
   // Example usage: Call this function when a file is selected
   // You can integrate this with your existing file input or other elements/events
   
-</script>
+</script> -->
 <script>
   let gameStarted = false;
   const canvas = document.getElementById('gameCanvas');
@@ -254,6 +254,7 @@
     this.isJumping = true;
     document.getElementById('jumpSound').play();
   }
+
 }
 
 hit() {
@@ -279,10 +280,20 @@ hit() {
   this.recentlyHit = true;
   setTimeout(() => { this.recentlyHit = false; }, 500);
 
-  if (this.health <= 0) {
-    alert(this.color + ' player has been defeated!');
+  if (player1.health <= 0)
+  {
+    alert("Player 2 has won!");
     window.location.reload();
   }
+  else if (player2.health <=0)
+  {
+    alert("Player 1 has won!");
+    window.location.reload();
+  }
+  // if (this.health <= 0) {
+  //   alert(this.color + ' player has been defeated!');
+  //   window.location.reload();
+  // }
 }
 
 
@@ -315,14 +326,14 @@ hit() {
 
   // Restart the game
   gameStarted = true;
-  document.getElementById('resetButton').style.display = 'none'; // Hide reset button
+  // document.getElementById('resetButton').style.display = 'none'; // Hide reset button
   requestAnimationFrame(gameLoop);
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('keyup', handleKeyUp);
 }
 
 // Add Event Listener to Reset Button
-document.getElementById('resetButton').addEventListener('click', resetGame);
+// document.getElementById('resetButton').addEventListener('click', resetGame);
 
   const groundLevelOffset = 200;
 
@@ -409,7 +420,7 @@ function handleKeyUp(e) {
 document.getElementById('startButton').onclick = function() {
   document.getElementById('introSound').play();
   document.getElementById('startModal').style.display = 'none';
-  document.getElementById('resetButton').style.display = 'none'; // Hide reset button
+  // document.getElementById('resetButton').style.display = 'none'; // Hide reset button
   gameStarted = true;
 };
 };
