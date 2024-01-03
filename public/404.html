@@ -83,7 +83,7 @@
 </style>
 </head>
 <body>
-  <button id="resetButton">Reset Game</button>
+  <!-- <button id="resetButton">Reset Game</button> -->
   <audio id="shootSound" src="shoot.mp3"></audio>
   <audio id="jumpSound" src="jump.mp3"></audio>
   <audio id="gruntSound" src="CowboyGrunt.mp3"></audio>
@@ -93,7 +93,7 @@
     <div class="modal-content">
       <h2>Game Controls</h2>
       <p>Player 1 Controls: W: jump A: left D: right, F to shoot</p>
-      <p>Player 2 Controls: I: jump J: left L: right, H to shoot</p>
+      <p>Player 2 Controls: I: jump J: left L: right, ";" to shoot</p>
       <button id="startButton">Start Game</button>
     </div>
   </div>
@@ -304,30 +304,30 @@ hit() {
 
   }
 
-  function resetGame() {
-  // Remove existing event listeners
-  window.removeEventListener('keydown', handleKeyDown);
-  window.removeEventListener('keyup', handleKeyUp);
-  // Reset players and other game states
-  player1.reset();
-  player2.reset();
-  healthPacks = []; // Clear any existing health packs
+//   function resetGame() {
+//   // Remove existing event listeners
+//   window.removeEventListener('keydown', handleKeyDown);
+//   window.removeEventListener('keyup', handleKeyUp);
+//   // Reset players and other game states
+//   player1.reset();
+//   player2.reset();
+//   healthPacks = []; // Clear any existing health packs
 
-  // Restart the game
-  gameStarted = true;
-  document.getElementById('resetButton').style.display = 'none'; // Hide reset button
-  requestAnimationFrame(gameLoop);
-  window.addEventListener('keydown', handleKeyDown);
-  window.addEventListener('keyup', handleKeyUp);
-}
+//   // Restart the game
+//   gameStarted = true;
+//   // document.getElementById('resetButton').style.display = 'none'; // Hide reset button
+//   requestAnimationFrame(gameLoop);
+//   window.addEventListener('keydown', handleKeyDown);
+//   window.addEventListener('keyup', handleKeyUp);
+// }
 
 // Add Event Listener to Reset Button
-document.getElementById('resetButton').addEventListener('click', resetGame);
+// document.getElementById('resetButton').addEventListener('click', resetGame);
 
   const groundLevelOffset = 200;
 
   const player1 = new Player(0, canvas.height - groundLevelOffset, 'red', 'w', 's', 'a', 'd', 'f', 'player1Sprite.png');
-const player2 = new Player(canvas.width - 200, canvas.height - groundLevelOffset, 'blue', 'i', 'k', 'j', 'l', 'h', 'player2Sprite.png');
+const player2 = new Player(canvas.width - 200, canvas.height - groundLevelOffset, 'blue', 'i', 'k', 'j', 'l', ';', 'player2Sprite.png');
 
 function handleKeyDown(e) {
   if (!gameStarted) return;
@@ -409,7 +409,7 @@ function handleKeyUp(e) {
 document.getElementById('startButton').onclick = function() {
   document.getElementById('introSound').play();
   document.getElementById('startModal').style.display = 'none';
-  document.getElementById('resetButton').style.display = 'none'; // Hide reset button
+  // document.getElementById('resetButton').style.display = 'none'; // Hide reset button
   gameStarted = true;
 };
 };
